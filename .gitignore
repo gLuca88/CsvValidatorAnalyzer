@@ -1,0 +1,29 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Maven
+/target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Log
+**/logs/
+*.log
+
+# IDE (IntelliJ, Eclipse, VSCode)
+*.iml
+.idea/
+*.classpath
+*.project
+*.settings/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Spring Boot properties (sensibili)
+application.properties
+application-*.properties

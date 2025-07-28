@@ -1,0 +1,117 @@
+<!-- csvdashboard.html aggiornato per usare solo dbAlias -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>CsvValidatorAnalyzer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/darkly/bootstrap.min.css" rel="stylesheet">
+  <link href="style.css" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">CsvValidatorAnalyzer</a>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+      <li class="nav-item">
+        <a class="nav-link active" id="analyze-tab" data-bs-toggle="tab" href="#analyze" role="tab">📥 Analizza CSV</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="db-tab" data-bs-toggle="tab" href="#db" role="tab">🛠️ Creazione CSV da DB</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="merge-tab" data-bs-toggle="tab" href="#merge" role="tab">🔗 Merge CSV</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="admin-tab" data-bs-toggle="tab" href="#admin" role="tab">🔐 Admin: Registra DB</a>
+      </li>
+    </ul>
+
+    <div class="tab-content mt-3" id="dashboardContent">
+
+      <!-- Analisi CSV -->
+      <div class="tab-pane fade show active" id="analyze" role="tabpanel">
+        <h4>📥 Carica e Analizza CSV</h4>
+        <form id="analyzeForm">
+          <input type="file" class="form-control" id="csvFileAnalyze" accept=".csv" multiple required>
+          <button type="submit" class="btn btn-primary mt-2">Analizza</button>
+        </form>
+        <div id="analyzeResult" class="mt-3"></div>
+      </div>
+
+      <!-- Validazione DB tramite dbAlias -->
+      <div class="tab-pane fade" id="db" role="tabpanel">
+        <h4>🛠️ Creazione CSV da Database</h4>
+        <form id="dbForm">
+          <div class="mb-3">
+            <label for="dbAlias">Seleziona database registrato</label>
+            <select id="dbAlias" class="form-select" required>
+              <option value="">-- scegli un alias --</option>
+              <!-- Popolato via JS -->
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="dbTable">Nome tabella</label>
+            <select id="dbTable" class="form-select" required>
+                   <option value="">-- seleziona una tabella --</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-success">Genera CSV</button>
+        </form>
+        <div id="dbResult" class="mt-3"></div>
+      </div>
+
+      <!-- Merge CSV -->
+      <div class="tab-pane fade" id="merge" role="tabpanel">
+        <h4>🔗 Merge di più file CSV</h4>
+        <form id="mergeForm">
+          <div class="mb-3">
+            <label>Seleziona file CSV</label>
+            <input type="file" class="form-control" id="csvFilesMerge" multiple>
+          </div>
+          <div id="mergeFileList" class="mb-3 text-info small"></div>
+          <div class="mb-3">
+            <label>Chiave di unione</label>
+            <input type="text" class="form-control" id="mergeKey" placeholder="es. id,email" required>
+          </div>
+          <button type="submit" class="btn btn-warning">Unisci</button>
+        </form>
+        <div id="mergeResult" class="mt-3"></div>
+      </div>
+
+      <!-- Admin: Registra DB -->
+      <div class="tab-pane fade" id="admin" role="tabpanel">
+        <h4>🔐 Registra un nuovo alias DB</h4>
+        <form id="adminRegisterForm">
+          <div class="mb-3">
+            <label for="alias">Alias (nome logico)</label>
+            <input type="text" class="form-control" id="alias" required>
+          </div>
+          <div class="mb-3">
+            <label for="url">URL JDBC</label>
+            <input type="text" class="form-control" id="url" required>
+          </div>
+          <div class="mb-3">
+            <label for="user">Username</label>
+            <input type="text" class="form-control" id="user" required>
+          </div>
+          <div class="mb-3">
+            <label for="pass">Password</label>
+            <input type="password" class="form-control" id="pass" required>
+          </div>
+          <button type="submit" class="btn btn-danger">Registra DB</button>
+        </form>
+        <div id="adminRegisterResult" class="mt-3"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
