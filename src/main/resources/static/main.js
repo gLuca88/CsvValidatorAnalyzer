@@ -1,200 +1,342 @@
-// ✅ BUFFER per file selezionati nel MERGE
+// 🔐 Blocco accesso se non loggato (escluse login e register-admin)
+const currentPath = window.location.pathname;
+if (!['/login.html', '/register-admin.html'].some(p => currentPath.endsWith(p))) {
+	if (!localStorage.getItem('token')) {
+		window.location.href = 'login.html';
+	}
+}
+
+// ✅ Fetch con JWT
+function fetchWithAuth(url, options = {}) {
+	const token = localStorage.getItem('token');
+	options.headers = options.headers || {};
+	options.headers['Authorization'] = 'Bearer ' + token;
+	return fetch(url, options);
+}
+
+// ✅ Logout
+const logoutBtn = document.getElementById("logoutBtn");
+if (logoutBtn) {
+	logoutBtn.addEventListener("click", () => {
+		fetchWithAuth("http://localhost:8080/api/auth/logout", { method: "POST" })
+			.finally(() => {
+				localStorage.removeItem("token");
+				localStorage.removeItem("role");
+				window.location.href = "login.html";
+			});
+	});
+}
+
+// ✅ Adatta UI in base al ruolo
+function decodeTokenAndAdaptUI() {
+	const token = localStorage.getItem("token");
+	if (!token) return;
+	try {
+		const payload = JSON.parse(atob(token.split('.')[1]));
+		const role = payload.role;
+		localStorage.setItem("role", role);
+		document.getElementById("admin-tab")?.style && (document.getElementById("admin-tab").style.display = role === "ADMIN" ? "block" : "none");
+		document.getElementById("users-tab")?.style && (document.getElementById("users-tab").style.display = role === "ADMIN" ? "block" : "none");
+	} catch (e) {
+		console.error("Token non valido:", e);
+	}
+}
+decodeTokenAndAdaptUI();
+
+// ✅ Mostra link "Registra Admin" se DB vuoto
+const registerAdminSection = document.getElementById("registerAdminSection");
+if (registerAdminSection) {
+	fetch("http://localhost:8080/api/auth/is-empty")
+		.then(res => res.json())
+		.then(isEmpty => {
+			if (isEmpty) {
+				registerAdminSection.style.display = "block";
+			}
+		})
+		.catch(err => console.error("Errore is-empty:", err));
+}
+
+// ✅ Blocco accesso a register-admin.html se DB non vuoto
+if (window.location.pathname.endsWith("register-admin.html")) {
+	fetch("http://localhost:8080/api/auth/is-empty")
+		.then(res => res.json())
+		.then(isEmpty => {
+			if (!isEmpty) {
+				alert("Registrazione admin non disponibile.");
+				window.location.href = "login.html";
+			}
+		});
+}
+
+// ✅ Merge buffer file
 let mergeFileBuffer = [];
 const csvFilesMergeInput = document.getElementById("csvFilesMerge");
 const mergeFileList = document.getElementById("mergeFileList");
 
 if (csvFilesMergeInput && mergeFileList) {
-  csvFilesMergeInput.addEventListener("change", function () {
-    const newFiles = Array.from(csvFilesMergeInput.files);
-
-    // Aggiungi evitando duplicati per nome file
-    newFiles.forEach(file => {
-      if (!mergeFileBuffer.some(f => f.name === file.name)) {
-        mergeFileBuffer.push(file);
-      }
-    });
-
-    // Aggiorna interfaccia
-    if (mergeFileBuffer.length > 0) {
-      mergeFileList.innerHTML = "<strong>File selezionati:</strong><ul>" +
-        mergeFileBuffer.map(f => `<li>${f.name}</li>`).join("") +
-        "</ul>";
-    } else {
-      mergeFileList.innerHTML = "";
-    }
-
-    // Resetta input per poter aggiungere di nuovo lo stesso file se serve
-    csvFilesMergeInput.value = "";
-  });
+	csvFilesMergeInput.addEventListener("change", () => {
+		const newFiles = Array.from(csvFilesMergeInput.files);
+		newFiles.forEach(f => {
+			if (!mergeFileBuffer.some(existing => existing.name === f.name)) {
+				mergeFileBuffer.push(f);
+			}
+		});
+		mergeFileList.innerHTML = mergeFileBuffer.length > 0
+			? `<strong>File selezionati:</strong><ul>${mergeFileBuffer.map(f => `<li>${f.name}</li>`).join('')}</ul>`
+			: "";
+		csvFilesMergeInput.value = "";
+	});
 }
 
-// ✅ Invia file per analisi CSV (più file)
+// ✅ Analisi CSV
 const analyzeForm = document.getElementById("analyzeForm");
-const analyzeResult = document.getElementById("analyzeResult");
+if (analyzeForm) {
+	analyzeForm.addEventListener("submit", e => {
+		e.preventDefault();
+		const files = document.getElementById("csvFileAnalyze").files;
+		const analyzeResult = document.getElementById("analyzeResult");
+		analyzeResult.innerHTML = "";
 
-if (analyzeForm && analyzeResult) {
-  analyzeForm.addEventListener("submit", function (e) {
-    e.preventDefault();
-    const files = document.getElementById("csvFileAnalyze").files;
-    analyzeResult.innerHTML = "";
-
-    for (let file of files) {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      fetch("http://localhost:8080/api/csv/validate", {
-        method: "POST",
-        body: formData
-      })
-        .then(res => res.json())
-        .then(data => {
-          analyzeResult.innerHTML += `<pre><strong>${file.name}</strong>\n${JSON.stringify(data, null, 2)}</pre>`;
-        })
-        .catch(err => {
-          analyzeResult.innerHTML += `<div class="alert alert-danger">Errore con ${file.name}: ${err.message}</div>`;
-        });
-    }
-  });
+		Array.from(files).forEach(file => {
+			const formData = new FormData();
+			formData.append("file", file);
+			fetchWithAuth("http://localhost:8080/api/csv/validate", {
+				method: "POST",
+				body: formData
+			})
+				.then(res => res.json())
+				.then(data => {
+					analyzeResult.innerHTML += `<pre><strong>${file.name}</strong>\n${JSON.stringify(data, null, 2)}</pre>`;
+				});
+		});
+	});
 }
 
-// ✅ Carica alias disponibili nella select
-const dbAliasSelect = document.getElementById("dbAlias");
+// ✅ CSV da DB
+const dbForm = document.getElementById("dbForm");
+if (dbForm) {
+	dbForm.addEventListener("submit", e => {
+		e.preventDefault();
+		const payload = {
+			dbAlias: document.getElementById("dbAlias").value,
+			tableName: document.getElementById("dbTable").value
+		};
+		fetchWithAuth("http://localhost:8080/api/db/validate", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload)
+		})
+			.then(res => res.json())
+			.then(data => {
+				document.getElementById("dbResult").innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+			});
+	});
+}
 
+// ✅ Caricamento alias e tabelle
 function loadDbAliasOptions() {
-  if (!dbAliasSelect) return;
-  dbAliasSelect.innerHTML = '<option value="">-- seleziona un alias --</option>';
-
-  fetch("http://localhost:8080/api/admin/dbconfig/list")
-    .then(res => res.json())
-    .then(data => {
-      data.forEach(alias => {
-        const opt = document.createElement("option");
-        opt.value = alias;
-        opt.textContent = alias;
-        dbAliasSelect.appendChild(opt);
-      });
-    })
-    .catch(err => console.error("Errore nel caricamento alias DB:", err));
+	const dbAliasSelect = document.getElementById("dbAlias");
+	if (!dbAliasSelect) return;
+	dbAliasSelect.innerHTML = '<option value="">-- seleziona un alias --</option>';
+	fetchWithAuth("http://localhost:8080/api/db/aliases")
+		.then(res => res.json())
+		.then(data => {
+			data.forEach(alias => {
+				const opt = document.createElement("option");
+				opt.value = alias;
+				opt.textContent = alias;
+				dbAliasSelect.appendChild(opt);
+			});
+		});
 }
-
-// Carica al primo avvio
 loadDbAliasOptions();
 
-// ✅ Invia richiesta per validazione da DB (ora usa solo alias e nome tabella)
-const dbForm = document.getElementById("dbForm");
-const dbResult = document.getElementById("dbResult");
-
-if (dbForm && dbResult) {
-  dbForm.addEventListener("submit", function (e) {
-    e.preventDefault();
-    const payload = {
-      dbAlias: document.getElementById("dbAlias").value,
-      tableName: document.getElementById("dbTable").value
-    };
-
-    fetch("http://localhost:8080/api/db/validate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-      .then(res => res.json())
-      .then(data => {
-        dbResult.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
-      })
-      .catch(err => {
-        dbResult.innerHTML = `<div class="alert alert-danger">Errore: ${err.message}</div>`;
-      });
-  });
-}
-
-// ✅ Carica tabelle in base all'alias selezionato
+const dbAliasSelect = document.getElementById("dbAlias");
 const dbTableSelect = document.getElementById("dbTable");
 
 if (dbAliasSelect && dbTableSelect) {
-  dbAliasSelect.addEventListener("change", function () {
-    const alias = dbAliasSelect.value;
-    dbTableSelect.innerHTML = '<option value="">-- seleziona una tabella --</option>';
-
-    if (!alias) return;
-
-    fetch(`http://localhost:8080/api/db/tables/${alias}`)
-      .then(res => res.json())
-      .then(tables => {
-        tables.forEach(table => {
-          const opt = document.createElement("option");
-          opt.value = table;
-          opt.textContent = table;
-          dbTableSelect.appendChild(opt);
-        });
-      })
-      .catch(err => {
-        console.error("Errore nel caricamento delle tabelle:", err);
-      });
-  });
+	dbAliasSelect.addEventListener("change", () => {
+		const alias = dbAliasSelect.value;
+		dbTableSelect.innerHTML = '<option value="">-- seleziona una tabella --</option>';
+		if (!alias) return;
+		fetchWithAuth(`http://localhost:8080/api/db/tables/${alias}`)
+			.then(res => res.json())
+			.then(tables => {
+				tables.forEach(table => {
+					const opt = document.createElement("option");
+					opt.value = table;
+					opt.textContent = table;
+					dbTableSelect.appendChild(opt);
+				});
+			});
+	});
 }
 
-// ✅ Invia file multipli per MERGE
+// ✅ Merge CSV
 const mergeForm = document.getElementById("mergeForm");
-const mergeResult = document.getElementById("mergeResult");
-
-if (mergeForm && mergeResult) {
-  mergeForm.addEventListener("submit", function (e) {
-    e.preventDefault();
-    const joinKey = document.getElementById("mergeKey").value;
-
-    if (mergeFileBuffer.length < 2) {
-      mergeResult.innerHTML = `<div class="alert alert-warning">Seleziona almeno due file CSV.</div>`;
-      return;
-    }
-
-    const formData = new FormData();
-    mergeFileBuffer.forEach(f => formData.append("csvFiles", f));
-    formData.append("joinKey", joinKey);
-
-    fetch("http://localhost:8080/api/csv/merge", {
-      method: "POST",
-      body: formData
-    })
-      .then(res => res.text())
-      .then(text => {
-        mergeResult.innerHTML = `<div class="alert alert-success">${text}</div>`;
-        mergeFileBuffer = [];
-        mergeFileList.innerHTML = "";
-      })
-      .catch(err => {
-        mergeResult.innerHTML = `<div class="alert alert-danger">Errore: ${err.message}</div>`;
-      });
-  });
+if (mergeForm) {
+	mergeForm.addEventListener("submit", e => {
+		e.preventDefault();
+		const formData = new FormData();
+		mergeFileBuffer.forEach(f => formData.append("csvFiles", f));
+		formData.append("joinKey", document.getElementById("mergeKey").value);
+		fetchWithAuth("http://localhost:8080/api/csv/merge", {
+			method: "POST",
+			body: formData
+		})
+			.then(res => res.text())
+			.then(msg => {
+				document.getElementById("mergeResult").innerHTML = `<div class="alert alert-success">${msg}</div>`;
+				mergeFileBuffer = [];
+				mergeFileList.innerHTML = "";
+			});
+	});
 }
 
-// ✅ Form registrazione DB (admin)
-const adminRegisterForm = document.getElementById("adminRegisterForm");
-const adminRegisterResult = document.getElementById("adminRegisterResult");
-
-if (adminRegisterForm && adminRegisterResult) {
-  adminRegisterForm.addEventListener("submit", function (e) {
-    e.preventDefault();
-
-    const payload = {
-      alias: document.getElementById("alias").value,
-      url: document.getElementById("url").value,
-      username: document.getElementById("user").value,
-      password: document.getElementById("pass").value
-    };
-
-    fetch("http://localhost:8080/api/admin/dbconfig/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-      .then(res => res.text())
-      .then(msg => {
-        adminRegisterResult.innerHTML = `<div class="alert alert-success">${msg}</div>`;
-        adminRegisterForm.reset();
-        loadDbAliasOptions(); // 🔄 aggiorna select
-      })
-      .catch(err => {
-        adminRegisterResult.innerHTML = `<div class="alert alert-danger">Errore: ${err.message}</div>`;
-      });
-  });
+// ✅ Gestione Utenti (Admin)
+const userRegisterForm = document.getElementById("userRegisterForm");
+if (userRegisterForm) {
+	userRegisterForm.addEventListener("submit", e => {
+		e.preventDefault();
+		const payload = {
+			username: document.getElementById("newUsername").value,
+			password: document.getElementById("newPassword").value,
+			role: document.getElementById("newRole").value
+		};
+		fetchWithAuth("http://localhost:8080/api/auth/register", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload)
+		})
+			.then(res => res.text())
+			.then(msg => {
+				document.getElementById("userRegisterResult").innerHTML = `<div class="alert alert-success">${msg}</div>`;
+				userRegisterForm.reset();
+				loadUsers();
+			});
+	});
 }
+
+function loadUsers() {
+	fetchWithAuth("http://localhost:8080/api/auth/all")
+		.then(res => res.json())
+		.then(users => {
+			const tbody = document.querySelector("#userTable tbody");
+			tbody.innerHTML = "";
+			users.forEach(user => {
+				const isProtected = user.protectedAdmin === true;
+				const tr = document.createElement("tr");
+				tr.innerHTML = `
+          <td>${user.username}</td>
+          ${isProtected ? `<td><span class='badge bg-secondary'>${user.role}</span></td><td><span class='text-muted'>Protetto</span></td>` : `
+            <td>
+              <select class='form-select form-select-sm' id='role-${user.username}'>
+                <option value='ADMIN' ${user.role === 'ADMIN' ? 'selected' : ''}>ADMIN</option>
+                <option value='EMPLOYEE' ${user.role === 'EMPLOYEE' ? 'selected' : ''}>EMPLOYEE</option>
+              </select>
+            </td>
+            <td>
+              <button class='btn btn-sm btn-success me-1' onclick='updateUserRole("${user.username}")'>Salva</button>
+              <button class='btn btn-sm btn-danger' onclick='deleteUser("${user.username}")'>Elimina</button>
+            </td>`}`;
+				tbody.appendChild(tr);
+			});
+		});
+}
+
+function updateUserRole(username) {
+	const selectedRole = document.getElementById(`role-${username}`).value;
+	const payload = { username, role: selectedRole };
+	fetchWithAuth("http://localhost:8080/api/auth/update-role", {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(payload)
+	})
+		.then(res => {
+			if (!res.ok) throw new Error("Errore aggiornamento ruolo");
+			return res.text();
+		})
+		.then(() => {
+			alert("Ruolo aggiornato con successo");
+			loadUsers();
+		});
+}
+
+function deleteUser(username) {
+	if (!confirm(`Sei sicuro di voler eliminare ${username}?`)) return;
+	fetchWithAuth(`http://localhost:8080/api/auth/${username}`, {
+		method: "DELETE"
+	})
+		.then(res => res.text())
+		.then(() => {
+			alert("Utente eliminato");
+			loadUsers();
+		});
+}
+
+const usersTab = document.getElementById("users-tab");
+if (usersTab) {
+	usersTab.addEventListener("click", () => {
+		loadUsers();
+	});
+}
+
+// ✅ Registra il primo Admin (usato solo da register-admin.html)
+const registerAdminForm = document.getElementById("registerAdminForm");
+if (registerAdminForm) {
+	registerAdminForm.addEventListener("submit", function(e) {
+		e.preventDefault();
+		const payload = {
+			username: document.getElementById("username").value,
+			password: document.getElementById("password").value,
+			role: "ADMIN"
+		};
+
+		fetch("http://localhost:8080/api/auth/register", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload)
+		})
+			.then(res => {
+				if (!res.ok) throw new Error("Registrazione fallita");
+				return res.text();
+			})
+			.then(msg => {
+				document.getElementById("registerResult").innerHTML = `<div class='alert alert-success'>${msg}</div>`;
+				registerAdminForm.reset();
+				setTimeout(() => window.location.href = "login.html", 1500);
+			})
+			.catch(err => {
+				document.getElementById("registerResult").innerHTML = `<div class='alert alert-danger'>${err.message}</div>`;
+			});
+	});
+}
+const form = document.getElementById("loginForm");
+const result = document.getElementById("loginResult");
+
+form.addEventListener("submit", function(e) {
+	e.preventDefault(); // ✅ evita il comportamento predefinito
+	const payload = {
+		username: document.getElementById("username").value,
+		password: document.getElementById("password").value
+	};
+
+	fetch("http://localhost:8080/api/auth/login", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(payload)
+	})
+		.then(res => {
+			if (!res.ok) throw new Error("Credenziali non valide");
+			return res.json();
+		})
+		.then(data => {
+			localStorage.setItem("token", data.token);
+			window.location.href = "index.html";
+		})
+		.catch(err => {
+			result.innerHTML = `<div class='alert alert-danger'>${err.message}</div>`;
+		});
+});
+
+
