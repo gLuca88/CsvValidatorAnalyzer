@@ -37,6 +37,7 @@ function decodeTokenAndAdaptUI() {
 		localStorage.setItem("role", role);
 		document.getElementById("admin-tab")?.style && (document.getElementById("admin-tab").style.display = role === "ADMIN" ? "block" : "none");
 		document.getElementById("users-tab")?.style && (document.getElementById("users-tab").style.display = role === "ADMIN" ? "block" : "none");
+		document.getElementById("profile-tab")?.style && (document.getElementById("profile-tab").style.display = role === "ADMIN" ? "block" : "none");
 	} catch (e) {
 		console.error("Token non valido:", e);
 	}
@@ -193,7 +194,7 @@ if (mergeForm) {
 	});
 }
 
-// ✅ Gestione Utenti (Admin)
+// ✅ Gestione Utenti
 const userRegisterForm = document.getElementById("userRegisterForm");
 if (userRegisterForm) {
 	userRegisterForm.addEventListener("submit", e => {
@@ -281,62 +282,92 @@ if (usersTab) {
 	});
 }
 
-// ✅ Registra il primo Admin (usato solo da register-admin.html)
-const registerAdminForm = document.getElementById("registerAdminForm");
-if (registerAdminForm) {
-	registerAdminForm.addEventListener("submit", function(e) {
+// ✅ Modifica Profilo Admin Protetto
+const profileForm = document.getElementById("profileUpdateForm");
+if (profileForm) {
+	profileForm.addEventListener("submit", function(e) {
+		e.preventDefault();
+		const payload = {
+			newUsername: document.getElementById("newAdminUsername").value,
+			newPassword: document.getElementById("newAdminPassword").value
+		};
+
+		fetchWithAuth("http://localhost:8080/api/admin-profile/update", {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload)
+		})
+			.then(res => res.text())
+			.then(msg => {
+				document.getElementById("profileUpdateResult").innerHTML =
+					`<div class='alert alert-success'>Credenziali aggiornate. Verrai disconnesso...</div>`;
+				setTimeout(() => {
+					localStorage.removeItem("token");
+					localStorage.removeItem("role");
+					window.location.href = "login.html";
+				}, 1500);
+			})
+			.catch(err => {
+				document.getElementById("profileUpdateResult").innerHTML =
+					`<div class='alert alert-danger'>${err.message}</div>`;
+			});
+	});
+}
+
+// ✅ Login (per login.html)
+const form = document.getElementById("loginForm");
+const result = document.getElementById("loginResult");
+
+if (form) {
+	form.addEventListener("submit", function(e) {
 		e.preventDefault();
 		const payload = {
 			username: document.getElementById("username").value,
-			password: document.getElementById("password").value,
-			role: "ADMIN"
+			password: document.getElementById("password").value
 		};
 
-		fetch("http://localhost:8080/api/auth/register", {
+		fetch("http://localhost:8080/api/auth/login", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(payload)
 		})
 			.then(res => {
-				if (!res.ok) throw new Error("Registrazione fallita");
-				return res.text();
+				if (!res.ok) throw new Error("Credenziali non valide");
+				return res.json();
 			})
-			.then(msg => {
-				document.getElementById("registerResult").innerHTML = `<div class='alert alert-success'>${msg}</div>`;
-				registerAdminForm.reset();
-				setTimeout(() => window.location.href = "login.html", 1500);
+			.then(data => {
+				localStorage.setItem("token", data.token);
+				window.location.href = "index.html";
 			})
 			.catch(err => {
-				document.getElementById("registerResult").innerHTML = `<div class='alert alert-danger'>${err.message}</div>`;
+				result.innerHTML = `<div class='alert alert-danger'>${err.message}</div>`;
 			});
 	});
 }
-const form = document.getElementById("loginForm");
-const result = document.getElementById("loginResult");
-
-form.addEventListener("submit", function(e) {
-	e.preventDefault(); // ✅ evita il comportamento predefinito
-	const payload = {
-		username: document.getElementById("username").value,
-		password: document.getElementById("password").value
-	};
-
-	fetch("http://localhost:8080/api/auth/login", {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(payload)
-	})
-		.then(res => {
-			if (!res.ok) throw new Error("Credenziali non valide");
-			return res.json();
-		})
-		.then(data => {
-			localStorage.setItem("token", data.token);
-			window.location.href = "index.html";
+const profileTab = document.getElementById("profile-tab");
+if (profileTab) {
+	fetchWithAuth("http://localhost:8080/api/admin-profile/is-protected-admin")
+		.then(res => res.json())
+		.then(isProtected => {
+			profileTab.style.display = isProtected ? "block" : "none";
 		})
 		.catch(err => {
-			result.innerHTML = `<div class='alert alert-danger'>${err.message}</div>`;
+			console.error("Errore verifica protectedAdmin:", err);
+			profileTab.style.display = "none";
 		});
-});
+}
+// ✅ Mostra nome utente e ruolo in alto
+const userInfo = document.getElementById("userInfo");
+const token = localStorage.getItem("token");
 
+if (userInfo && token) {
+	try {
+		const payload = JSON.parse(atob(token.split('.')[1]));
+		const username = payload.sub || payload.username || "Utente";
+		const role = payload.role || "RUOLO";
+		userInfo.textContent = `👤 ${username} (${role})`;
+	} catch (e) {
+		console.error("Errore nel decodificare il token per username e ruolo");
+	}
+}
 
