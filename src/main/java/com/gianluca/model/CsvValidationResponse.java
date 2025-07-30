@@ -3,10 +3,13 @@ package com.gianluca.model;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -25,7 +28,6 @@ public class CsvValidationResponse {
 	// -->Aggiunto per permettere l'esportazione
 	private List<String> csvLines;
 
-	
 	// Costruttore usato dalla convalida CSV, senza campo csvLines
 	public CsvValidationResponse(int totalRows, int validRows, int invalidRows, List<CsvRowError> errors,
 			List<String> headers, List<String> inferredRequiredColumns, Map<String, Integer> columnNullCounts) {

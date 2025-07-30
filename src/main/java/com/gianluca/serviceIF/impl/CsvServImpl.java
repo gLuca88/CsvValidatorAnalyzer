@@ -28,6 +28,8 @@ public class CsvServImpl implements CsvService {
 
 		// Lista delle intestazioni del CSV
 		List<String> headersList = new ArrayList<>();
+		
+		List<String> csvLines = new ArrayList<>();//-->righe nel json di rix
 
 		int totalRows = 0;// Numero totale di righe (esclusa intestazione)
 		int validRows = 0;// Numero di righe valide (nessun campo vuoto)
@@ -41,7 +43,7 @@ public class CsvServImpl implements CsvService {
 			boolean isFirstLine = true;// Serve per distinguere la prima riga (intestazione)
 
 			while ((line = reader.readLine()) != null) {
-
+				csvLines.add(line);
 				String[] parts = line.split(",");
 
 				if (isFirstLine) {
@@ -100,7 +102,7 @@ public class CsvServImpl implements CsvService {
 		// Restituisce la risposta completa con tutte le statistiche in base al model
 		// costruito
 		return new CsvValidationResponse(totalRows, validRows, invalidRows, errorList, headersList,
-				inferredRequiredColumns, columnNullCounts);
+				inferredRequiredColumns, columnNullCounts,csvLines);
 	}
 
 	@Override
