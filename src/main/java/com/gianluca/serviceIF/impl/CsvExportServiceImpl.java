@@ -13,7 +13,10 @@ import com.gianluca.model.CsvRowError;
 import com.gianluca.model.CsvValidationResponse;
 import com.gianluca.serviceIF.CsvExportService;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class CsvExportServiceImpl implements CsvExportService {
 
 	private String getDesktopPath() {
@@ -22,15 +25,18 @@ public class CsvExportServiceImpl implements CsvExportService {
 
 	@Override
 	public File exportToCsv(List<String> csvLines, String tableName) {
+		log.debug("Inizio exportToCsv: tableName='{}', linesCount={}", tableName, csvLines.size());
 		try {
 			// Percorso: Desktop/csv_generati
 			String dirPath = Paths.get(getDesktopPath(), "csv_generati").toString();
 			File dir = new File(dirPath);
 			if (!dir.exists())
-				dir.mkdirs();
+				log.debug("Directory non esistente, la creo: {}", dirPath);
+			dir.mkdirs();
 
 			// Nome file: nomeTabella.csv
 			File file = new File(dir, tableName + ".csv");
+			log.debug("Creazione FileWriter per file: {}", file.getAbsolutePath());
 			FileWriter writer = new FileWriter(file);
 
 			for (String line : csvLines) {
@@ -38,23 +44,28 @@ public class CsvExportServiceImpl implements CsvExportService {
 			}
 
 			writer.close();
+			log.info("CSV esportato con successo in: {}", file.getAbsolutePath());
 			return file;
 		} catch (IOException e) {
+			log.error("Errore durante esportazione CSV per table '{}': {}", tableName, e.getMessage(), e);
 			throw new RuntimeException("Errore durante esportazione CSV", e);
 		}
 	}
 
 	@Override
 	public File exportToReport(CsvValidationResponse response, String tableName) {
+		log.debug("Inizio exportToReport: tableName='{}', totalRows={}", tableName, response.getTotalRows());
 		try {
 			// Percorso: Desktop/report_csv
 			String dirPath = Paths.get(getDesktopPath(), "report_csv").toString();
 			File dir = new File(dirPath);
 			if (!dir.exists())
-				dir.mkdirs();
+				log.debug("Directory non esistente, la creo: {}", dirPath);
+			dir.mkdirs();
 
 			// Nome file: report_nomeTabella.txt
 			File file = new File(dir, "report_" + tableName + ".txt");
+			log.debug("Creazione FileWriter per report: {}", file.getAbsolutePath());
 			FileWriter writer = new FileWriter(file);
 
 			writer.write("🔍 Report Validazione CSV\n\n");
@@ -79,6 +90,7 @@ public class CsvExportServiceImpl implements CsvExportService {
 			}
 
 			writer.close();
+			log.info("Report CSV esportato con successo in: {}", file.getAbsolutePath());
 			return file;
 		} catch (IOException e) {
 			throw new RuntimeException("Errore durante esportazione report", e);

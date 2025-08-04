@@ -1,21 +1,36 @@
 package com.gianluca.serviceIF.impl;
 
-import com.gianluca.dto.CsvMergeRequest;
-import com.gianluca.serviceIF.CsvMergeService;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.*;
-import java.nio.file.*;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.gianluca.dto.CsvMergeRequest;
+import com.gianluca.serviceIF.CsvMergeService;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 public class CsvMergeServiceImpl implements CsvMergeService {
 
 	@Override
@@ -26,6 +41,8 @@ public class CsvMergeServiceImpl implements CsvMergeService {
 
 		try {
 			for (MultipartFile file : request.getCsvFiles()) {
+				String origName = file.getOriginalFilename();
+				log.debug("Parsing del file CSV: {}", origName);
 				List<Map<String, String>> rows = new ArrayList<>();
 
 				try (BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
@@ -45,6 +62,7 @@ public class CsvMergeServiceImpl implements CsvMergeService {
 									validIndexes.add(i);
 								}
 							}
+							log.debug("Headers trovati (escluse password): {}", headers);
 							isFirstLine = false;
 						} else {
 							Map<String, String> row = new LinkedHashMap<>();
@@ -61,17 +79,23 @@ public class CsvMergeServiceImpl implements CsvMergeService {
 				allFilesData.add(rows);
 
 				String name = file.getOriginalFilename();
-				if (name != null)
+				if (name != null) {
 					fileNames.add(name.replaceAll("\\.csv$", ""));
+					log.debug("File '{}' parsed, righe lette: {}", origName, rows.size());
+				}
 			}
 
-			if (allFilesData.isEmpty())
+			if (allFilesData.isEmpty()) {
+				log.warn("Nessun file CSV fornito in richiesta");
 				return "Errore: nessun file CSV fornito.";
+			}
 
 			// Merge progressivo
 			List<Map<String, String>> baseData = allFilesData.get(0);
+			log.debug("Dati di base iniziali: {} righe", baseData.size());
 
 			for (List<Map<String, String>> nextFile : allFilesData.subList(1, allFilesData.size())) {
+				log.debug("Merge con il prossimo file ({}) righe", nextFile.size());
 				Map<String, Map<String, String>> lookupMap = nextFile.stream().filter(row -> row.get(joinKey) != null)
 						.collect(Collectors.toMap(row -> row.get(joinKey).trim(), row -> row,
 								(existing, replacement) -> existing));
@@ -93,12 +117,14 @@ public class CsvMergeServiceImpl implements CsvMergeService {
 				}
 
 				baseData = mergedRows;
+				log.debug("Dopo merge progressivo, righe totali: {}", baseData.size());
 			}
 
 			// Scrittura Excel
 			Set<String> finalHeaders = baseData.stream().flatMap(m -> m.keySet().stream())
 					.filter(h -> !h.toLowerCase().contains("password"))
 					.collect(Collectors.toCollection(LinkedHashSet::new));
+			log.debug("Final headers per Excel: {}", finalHeaders);
 
 			Workbook workbook = new XSSFWorkbook();
 			Sheet sheet = workbook.createSheet("MergedData");
@@ -117,11 +143,14 @@ public class CsvMergeServiceImpl implements CsvMergeService {
 					row.createCell(colIndex++).setCellValue(rowMap.getOrDefault(header, ""));
 				}
 			}
+			log.info("Workbook popolato: {} righe, {} colonne", baseData.size(), finalHeaders.size());
 
 			String desktopPath = System.getProperty("user.home") + File.separator + "Desktop";
 			Path outputDir = Paths.get(desktopPath, "file_excel_csv");
-			if (!Files.exists(outputDir))
+			if (!Files.exists(outputDir)) {
 				Files.createDirectories(outputDir);
+				log.debug("Directory creata: {}", outputDir);
+			}
 
 			String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
 			String fileName = "merged_" + String.join("_", fileNames) + "_" + timestamp + ".xlsx";
@@ -131,10 +160,11 @@ public class CsvMergeServiceImpl implements CsvMergeService {
 				workbook.write(out);
 			}
 			workbook.close();
-
+			log.info("File Excel creato con successo in: {}", outputFile.getAbsolutePath());
 			return outputFile.getAbsolutePath();
 
 		} catch (Exception e) {
+			log.error("Errore durante il mergeCsvFilesAndExport: {}", e.getMessage(), e);
 			e.printStackTrace();
 			return "Errore durante il merge: " + e.getMessage();
 		}

@@ -11,8 +11,11 @@ import org.springframework.web.multipart.MultipartFile;
 import com.gianluca.dto.CsvMergeRequest;
 import com.gianluca.serviceIF.CsvMergeService;
 
+import lombok.extern.slf4j.Slf4j;
+
 @RestController
 @RequestMapping("/api/csv")
+@Slf4j
 public class CsvMergeController {
 
 	@Autowired
@@ -21,11 +24,13 @@ public class CsvMergeController {
 	@PostMapping("/merge")
 	public ResponseEntity<String> mergeCsvFiles(@RequestParam("csvFiles") MultipartFile[] csvFiles,
 			@RequestParam("joinKey") String joinKey) {
+		log.debug("Richiesta merge di {} file CSV con joinKey='{}'", csvFiles.length, joinKey);
 		CsvMergeRequest request = new CsvMergeRequest();
 		request.setCsvFiles(java.util.Arrays.asList(csvFiles));
 		request.setJoinKey(joinKey);
 
 		String resultPath = csvMergeService.mergeCsvFilesAndExport(request);
+		log.info("Merge completato, file esportato in: {}", resultPath);
 
 		return ResponseEntity.ok("File Excel creato in: " + resultPath);
 	}

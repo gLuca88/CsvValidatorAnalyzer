@@ -23,8 +23,11 @@ import com.gianluca.model.DbConfig;
 import com.gianluca.serviceIF.DbValidationService;
 import com.gianluca.serviceIF.impl.DbConfigService;
 
+import lombok.extern.slf4j.Slf4j;
+
 @RestController
 @RequestMapping("/api/db")
+@Slf4j
 public class DbValidationController {
 
 	@Autowired
@@ -36,11 +39,13 @@ public class DbValidationController {
 	// Endpoint POST per validare dati da un database
 	@PostMapping("/validate")
 	public CsvValidationResponse validateFromDatabase(@RequestBody DbValidationRequest request) {
+		log.debug("Invocazione validateFromDatabase con request={}", request);
 		return dbValidationService.validateFromDatabase(request);
 	}
 
 	@GetMapping("/tables/{alias}")
 	public ResponseEntity<List<String>> listTables(@PathVariable String alias) {
+		log.debug("Chiamata listTables per alias='{}'", alias);
 		DbConfig config = dbConfigService.getConfigByAlias(alias);
 
 		List<String> tables = new ArrayList<>();
@@ -53,18 +58,21 @@ public class DbValidationController {
 			while (rs.next()) {
 				tables.add(rs.getString("TABLE_NAME"));
 			}
+			log.info("Trovate {} tabelle per alias='{}'", tables.size(), alias);
 			return ResponseEntity.ok(tables);
 		} catch (Exception e) {
+			log.error("Errore retrieving tables for alias='{}': {}", alias, e.getMessage(), e);
 			return ResponseEntity.internalServerError().build();
 		}
 	}
 
-	
-	//per dati db employee
+	// per dati db employee
 	@GetMapping("/aliases")
 	@PreAuthorize("hasAnyRole('ADMIN', 'EMPLOYEE')")
 	public ResponseEntity<List<String>> getAvailableDbAliases() {
+		log.debug("Invocazione getAvailableDbAliases");
 		List<String> aliases = dbConfigService.getAllAliases();
+		log.info("Alias disponibili: {}", aliases);
 		return ResponseEntity.ok(aliases);
 	}
 }

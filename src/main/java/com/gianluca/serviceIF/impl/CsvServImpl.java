@@ -14,11 +14,16 @@ import com.gianluca.model.CsvRowError;
 import com.gianluca.model.CsvValidationResponse;
 import com.gianluca.serviceIF.CsvService;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class CsvServImpl implements CsvService {
 
 	@Override
 	public CsvValidationResponse validateCsvFile(MultipartFile file) {
+		String filename = file.getOriginalFilename();
+		log.debug("Inizio validateCsvFile per file='{}'", filename);
 		// Lista per memorizzare gli errori riga per riga
 		List<CsvRowError> errorList = new ArrayList<>();
 
@@ -28,8 +33,8 @@ public class CsvServImpl implements CsvService {
 
 		// Lista delle intestazioni del CSV
 		List<String> headersList = new ArrayList<>();
-		
-		List<String> csvLines = new ArrayList<>();//-->righe nel json di rix
+
+		List<String> csvLines = new ArrayList<>();// -->righe nel json di rix
 
 		int totalRows = 0;// Numero totale di righe (esclusa intestazione)
 		int validRows = 0;// Numero di righe valide (nessun campo vuoto)
@@ -47,6 +52,7 @@ public class CsvServImpl implements CsvService {
 				String[] parts = line.split(",");
 
 				if (isFirstLine) {
+					log.debug("Parsing header CSV: {}", line);
 					headers = parts;
 					for (String header : headers) {
 						String trimmedHeader = header.trim();
@@ -62,6 +68,7 @@ public class CsvServImpl implements CsvService {
 				if (parts.length != headers.length) {
 					errorList.add(new CsvRowError(totalRows,
 							"Numero di colonne non valido (attesi: " + headers.length + ")"));
+					log.warn("Riga {}: colonne attese={}, trovate={}", totalRows, headers.length, parts.length);
 					continue;// Salta l'analisi della riga
 				}
 
@@ -76,6 +83,7 @@ public class CsvServImpl implements CsvService {
 																						// nulli per la colonna
 						errorList.add(new CsvRowError(totalRows, "Campo vuoto nella colonna '" + column + "'"));
 						isValid = false;
+						log.debug("Riga {}: campo vuoto in '{}'", totalRows, column);
 					}
 				}
 				if (isValid) {// Se nessun campo è vuoto, la riga è valida
@@ -85,11 +93,14 @@ public class CsvServImpl implements CsvService {
 			}
 
 		} catch (Exception e) {// Errore generico nella lettura del file
+			log.error("Errore nella lettura del file '{}': {}", filename, e.getMessage(), e);
 			errorList.add(new CsvRowError(0, "Errore nella lettura del file:" + e.getMessage()));
 		}
 
 		int invalidRows = totalRows - validRows;// Calcola il numero di righe non valide come differenza tot righe-rig
 												// not valid
+		log.info("validateCsvFile completato per '{}': totalRows={}, validRows={}, invalidRows={}", filename, totalRows,
+				validRows, invalidRows);
 
 		// Determina colonne "obbligatorie" come quelle con zero valori nulli
 		List<String> inferredRequiredColumns = new ArrayList<>();
@@ -102,11 +113,12 @@ public class CsvServImpl implements CsvService {
 		// Restituisce la risposta completa con tutte le statistiche in base al model
 		// costruito
 		return new CsvValidationResponse(totalRows, validRows, invalidRows, errorList, headersList,
-				inferredRequiredColumns, columnNullCounts,csvLines);
+				inferredRequiredColumns, columnNullCounts, csvLines);
 	}
 
 	@Override
 	public CsvValidationResponse validateCsvLines(List<String> lines) {
+		log.debug("Inizio validateCsvLines per {} righe", lines.size());
 		List<CsvRowError> errorList = new ArrayList<>();
 		Map<String, Integer> columnNullCounts = new LinkedHashMap<>();
 		List<String> headersList = new ArrayList<>();
@@ -120,6 +132,7 @@ public class CsvServImpl implements CsvService {
 				String[] parts = line.split(",");
 
 				if (isFirstLine) {
+					log.debug("Parsing header da lista: {}", line);
 					headers = parts;
 					for (String header : headers) {
 						String trimmedHeader = header.trim();
@@ -135,6 +148,7 @@ public class CsvServImpl implements CsvService {
 				if (parts.length != headers.length) {
 					errorList.add(new CsvRowError(totalRows,
 							"Numero di colonne non valido (attesi: " + headers.length + ")"));
+					log.warn("Riga {}: colonne attese={}, trovate={}", totalRows, headers.length, parts.length);
 					continue;
 				}
 
@@ -146,6 +160,7 @@ public class CsvServImpl implements CsvService {
 						columnNullCounts.put(column, columnNullCounts.get(column) + 1);
 						errorList.add(new CsvRowError(totalRows, "Campo vuoto nella colonna '" + column + "'"));
 						isValid = false;
+						log.debug("Riga {}: campo vuoto in '{}'", totalRows, column);
 					}
 				}
 
@@ -155,10 +170,13 @@ public class CsvServImpl implements CsvService {
 			}
 
 		} catch (Exception e) {
+			log.error("Errore nella validazione delle righe: {}", e.getMessage(), e);
 			errorList.add(new CsvRowError(0, "Errore nella lettura dei dati: " + e.getMessage()));
 		}
 
 		int invalidRows = totalRows - validRows;
+		log.info("validateCsvLines completato: totalRows={}, validRows={}, invalidRows={}", totalRows, validRows,
+				invalidRows);
 
 		List<String> inferredRequiredColumns = new ArrayList<>();
 		for (Map.Entry<String, Integer> entry : columnNullCounts.entrySet()) {
