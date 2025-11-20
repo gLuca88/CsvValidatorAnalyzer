@@ -1,51 +1,73 @@
 package com.gianluca.security.jwt;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
+
+import java.util.Date;
+import javax.crypto.SecretKey;
+
 import org.springframework.stereotype.Service;
 
-import java.security.Key;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtService {
 
-	private static final long EXPIRATION_TIME_MS = 1000 * 60 * 60 * 5; // 5 ore
-	private static final String SECRET_KEY = "mysecretkeyformyjwtgianlucatestsecure123456789"; // al meno 32 byte
+    private static final long EXPIRATION_TIME_MS = 1000 * 60 * 60 * 5; // 5 ore
+    private static final String SECRET_KEY =
+            "mysecretkeyformyjwtgianlucatestsecure123456789"; // almeno 32 byte
 
-	private Key getSigningKey() {
-		return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
-	}
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+    }
 
-	public String generateToken(String username, String role) {
-		Map<String, Object> claims = new HashMap<>();
-		claims.put("role", role);
+    // ------------------------------
+    // GENERAZIONE TOKEN
+    // ------------------------------
+    public String generateToken(String username, String role) {
 
-		return Jwts.builder().setSubject(username).addClaims(claims).setIssuedAt(new Date())
-				.setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME_MS))
-				.signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();
-	}
+        return Jwts.builder()
+                .subject(username)
+                .claim("role", role)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME_MS))
+                .signWith(getSigningKey(), Jwts.SIG.HS256)   // <-- CORRETTO
+                .compact();
+    }
 
-	public String extractUsername(String token) {
-		return getClaims(token).getSubject();
-	}
+    // ------------------------------
+    // ESTRAZIONE CLAIM
+    // ------------------------------
+    public String extractUsername(String token) {
+        return getClaims(token).getSubject();
+    }
 
-	public String extractRole(String token) {
-		return (String) getClaims(token).get("role");
-	}
+    public String extractRole(String token) {
+        return getClaims(token).get("role", String.class);
+    }
 
-	public boolean isTokenValid(String token) {
-		try {
-			getClaims(token);
-			return true;
-		} catch (JwtException e) {
-			return false;
-		}
-	}
+    // ------------------------------
+    // VALIDAZIONE TOKEN
+    // ------------------------------
+    public boolean isTokenValid(String token) {
+        try {
+            getClaims(token);
+            return true;
+        } catch (JwtException e) {
+            return false;
+        }
+    }
 
-	private Claims getClaims(String token) {
-		return Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token).getBody();
-	}
+    // ------------------------------
+    // PARSING CLAIM (nuova API)
+    // ------------------------------
+    private Claims getClaims(String token) {
+        return Jwts
+                .parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
 }

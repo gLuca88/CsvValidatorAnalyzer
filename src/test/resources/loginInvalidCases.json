@@ -1,0 +1,37 @@
+[
+  {
+    "descrizione": "Password errata",
+    "username": "admin",
+    "password": "wrongpass"
+  },
+  {
+    "descrizione": "Username inesistente",
+    "username": "pippo",
+    "password": "adminpass"
+  },
+  {
+    "descrizione": "Username vuoto",
+    "username": "",
+    "password": "adminpass"
+  },
+  {
+    "descrizione": "Password vuota",
+    "username": "admin",
+    "password": ""
+  },
+  {
+    "descrizione": "Username e password vuoti",
+    "username": "",
+    "password": ""
+  },
+  {
+    "descrizione": "Username mancante",
+    "username": null,
+    "password": "adminpass"
+  },
+  {
+    "descrizione": "Password mancante",
+    "username": "admin",
+    "password": null
+  }
+]

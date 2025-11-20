@@ -371,3 +371,65 @@ if (userInfo && token) {
 	}
 }
 
+// ✅ Registrazione primo admin
+const registerAdminForm = document.getElementById("registerAdminForm");
+if (registerAdminForm) {
+	registerAdminForm.addEventListener("submit", function(e) {
+		e.preventDefault();
+		const payload = {
+			username: document.getElementById("username").value,
+			password: document.getElementById("password").value,
+			role: document.getElementById("role").value
+		};
+
+		fetch("http://localhost:8080/api/auth/register", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload)
+		})
+			.then(res => res.text())
+			.then(msg => {
+				document.getElementById("registerResult").innerHTML =
+					`<div class='alert alert-success'>${msg}</div>`;
+				setTimeout(() => window.location.href = "login.html", 1500);
+			})
+			.catch(err => {
+				document.getElementById("registerResult").innerHTML =
+					`<div class='alert alert-danger'>Errore: ${err.message}</div>`;
+			});
+	});
+}
+// ✅ Registrazione nuovo alias DB (solo admin)
+const adminRegisterForm = document.getElementById("adminRegisterForm");
+if (adminRegisterForm) {
+	adminRegisterForm.addEventListener("submit", e => {
+		e.preventDefault();
+
+		const payload = {
+			alias: document.getElementById("alias").value,
+			url: document.getElementById("url").value,
+			username: document.getElementById("user").value,
+			password: document.getElementById("pass").value
+		};
+
+		fetchWithAuth("http://localhost:8080/api/admin/dbconfig/register", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload)
+		})
+			.then(res => {
+				if (!res.ok) throw new Error("Errore durante la registrazione del DB");
+				return res.text();
+			})
+			.then(msg => {
+				document.getElementById("adminRegisterResult").innerHTML =
+					`<div class='alert alert-success'>${msg}</div>`;
+				adminRegisterForm.reset();
+			})
+			.catch(err => {
+				document.getElementById("adminRegisterResult").innerHTML =
+					`<div class='alert alert-danger'>${err.message}</div>`;
+			});
+	});
+}
+

@@ -9,5 +9,8 @@ public class CsvValidatorAnalyzerApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(CsvValidatorAnalyzerApplication.class, args);
 	}
-
 }
+
+	
+	//gianluca@gmail.com   stacy-->pass  admin
+   // felice   pippo  employe
