@@ -1,5 +1,6 @@
 package Utils;
 
+import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 import java.sql.Connection;
@@ -9,7 +10,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
 import GestioneDb.DataBaseManager;
-import static io.restassured.RestAssured.*;
 
 public abstract class BaseTest {
 
@@ -44,4 +44,14 @@ public abstract class BaseTest {
 		given().baseUri("http://localhost:8080").basePath("/api/auth/register").contentType("application/json")
 				.body(json).when().post().then().statusCode(200).body(equalTo("Registrazione completata"));
 	}
+
+	protected String loginRecuperaToken() {
+
+		String loginJson = CreaJson.creaJsonAccesso("admin", "adminpass");
+
+		return given().baseUri("http://localhost:8080").basePath("/api/auth/login").contentType("application/json")
+				.body(loginJson).when().post().then().statusCode(200).extract().path("token");
+
+	}
+
 }

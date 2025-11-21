@@ -59,5 +59,7 @@ public class TestRegistrazioneAdmin extends BaseTest {
 		assertTrue(rs.getBoolean("protected_admin"), "❌ L'admin NON risulta protetto");
 		System.out.println("✔ Admin protetto verificato nel DB");
 	}
+	
+	
 
 }
