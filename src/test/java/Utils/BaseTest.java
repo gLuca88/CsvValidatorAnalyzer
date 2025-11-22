@@ -1,15 +1,18 @@
 package Utils;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.equalTo;
 
 import java.sql.Connection;
 import java.sql.Statement;
 
+
 import org.junit.jupiter.api.AfterEach;
+
 import org.junit.jupiter.api.BeforeEach;
 
 import GestioneDb.DataBaseManager;
+
 
 public abstract class BaseTest {
 
@@ -37,7 +40,6 @@ public abstract class BaseTest {
 		}
 	}
 
-	// crea admin via api
 	protected void creaAdminViaApi() {
 		String json = CreaJson.creaJsonAccesso("admin", "adminpass", "ADMIN");
 
@@ -46,12 +48,9 @@ public abstract class BaseTest {
 	}
 
 	protected String loginRecuperaToken() {
-
 		String loginJson = CreaJson.creaJsonAccesso("admin", "adminpass");
 
 		return given().baseUri("http://localhost:8080").basePath("/api/auth/login").contentType("application/json")
 				.body(loginJson).when().post().then().statusCode(200).extract().path("token");
-
 	}
-
 }
