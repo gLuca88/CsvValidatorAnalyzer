@@ -1,35 +1,42 @@
 [
   {
+	"tcId": "LOGIN-002",
     "descrizione": "Password errata",
     "username": "admin",
     "password": "wrongpass"
   },
   {
+	"tcId": "LOGIN-003",
     "descrizione": "Username inesistente",
     "username": "pippo",
     "password": "adminpass"
   },
   {
+	"tcId": "LOGIN-004",
     "descrizione": "Username vuoto",
     "username": "",
     "password": "adminpass"
   },
   {
+	"tcId": "LOGIN-005",
     "descrizione": "Password vuota",
     "username": "admin",
     "password": ""
   },
   {
+	"tcId": "LOGIN-006",
     "descrizione": "Username e password vuoti",
     "username": "",
     "password": ""
   },
   {
+	"tcId": "LOGIN-007",
     "descrizione": "Username mancante",
     "username": null,
     "password": "adminpass"
   },
   {
+	"tcId": "LOGIN-008",
     "descrizione": "Password mancante",
     "username": "admin",
     "password": null
