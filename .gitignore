@@ -27,3 +27,16 @@ Thumbs.db
 # Spring Boot properties (sensibili)
 application.properties
 application-*.properties
+
+# ==========================
+# REPORT (ExtentReports + Test Output)
+# ==========================
+reports/
+report/
+extent-reports/
+test-output/
+output/
+screenshots/
+temp/
+*.html
+*.png
