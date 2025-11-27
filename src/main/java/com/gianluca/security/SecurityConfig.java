@@ -24,37 +24,44 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-	private final JwtAuthFilter jwtAuthFilter;
+    private final JwtAuthFilter jwtAuthFilter;
 
-	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		http.csrf(csrf -> csrf.disable())
-				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-				.authorizeHttpRequests(auth -> auth
-						// ✅ File pubblici (frontend)
-						.requestMatchers("/login.html", "/register-admin.html", "/index.html", "/main.js", "/style.css",
-								"/favicon.ico")
-						.permitAll()
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-						// ✅ Endpoint pubblici
-						.requestMatchers("/api/auth/login", "/api/auth/is-empty", "/api/auth/register").permitAll()
-						// 🔐 Endpoint protetti
-						.requestMatchers("/api/admin/**", "/api/auth/**").hasRole("ADMIN")
-						.requestMatchers("/api/csv/**", "/api/db/**").hasAnyRole("ADMIN", "EMPLOYEE")
+        http.csrf(csrf -> csrf.disable())
+            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .authorizeHttpRequests(auth -> auth
 
-						.anyRequest().authenticated());
+                .requestMatchers("/login.html", "/register-admin.html", "/index.html",
+                                 "/main.js", "/style.css", "/favicon.ico")
+                .permitAll()
 
-		return http.build();
-	}
+                .requestMatchers("/api/auth/login",
+                                 "/api/auth/register",
+                                 "/api/auth/is-empty")
+                .permitAll()
 
-	@Bean
-	public PasswordEncoder passwordEncoder() {
-		return new BCryptPasswordEncoder();
-	}
+                .requestMatchers("/api/auth/**").hasRole("ADMIN")
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-	@Bean
-	public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-		return config.getAuthenticationManager();
-	}
+                .requestMatchers("/api/csv/**", "/api/db/**")
+                .hasAnyRole("ADMIN", "EMPLOYEE")
+
+                .anyRequest().authenticated()
+            );
+
+        return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration c) throws Exception {
+        return c.getAuthenticationManager();
+    }
 }

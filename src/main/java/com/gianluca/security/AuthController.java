@@ -21,6 +21,7 @@ import com.gianluca.dto.UserDto;
 import com.gianluca.security.jwt.JwtService;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
@@ -43,18 +44,23 @@ public class AuthController {
 				authService.getClass().getSimpleName(), userRepository.getClass().getSimpleName());
 	}
 
-	// 🔐 LOGIN: restituisce un token JWT
 	@PostMapping("/login")
-	public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-		log.debug("Login attempt for username='{}'", request.getUsername());
+	public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+
+		if (request.getUsername() == null || request.getPassword() == null) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Campi mancanti");
+		}
+
 		try {
+			// Questo va in RuntimeException SOLO per credenziali errate
 			User user = authService.authenticate(request.getUsername(), request.getPassword());
+
 			String token = jwtService.generateToken(user.getUsername(), user.getRole());
-			log.info("User '{}' authenticated successfully", user.getUsername());
 			return ResponseEntity.ok(new JwtResponse(token));
+
 		} catch (RuntimeException e) {
-			log.warn("Authentication failed for username='{}': {}", request.getUsername(), e.getMessage());
-			return ResponseEntity.status(401).body("Credenziali non valide");
+			// Qui entri SOLO per credenziali NON valide
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Credenziali non valide");
 		}
 	}
 

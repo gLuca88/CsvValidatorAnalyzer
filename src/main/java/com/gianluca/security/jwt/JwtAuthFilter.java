@@ -2,6 +2,7 @@ package com.gianluca.security.jwt;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Set;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -9,6 +10,9 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +23,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
 	private final JwtService jwtService;
 
+	private static final Set<String> PUBLIC_PATHS = Set.of("/api/auth/login", "/api/auth/register",
+			"/api/auth/is-empty");
+
 	public JwtAuthFilter(JwtService jwtService) {
 		this.jwtService = jwtService;
 	}
@@ -27,40 +34,58 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
 
-		String path = request.getServletPath();
-
-		// 🔓 Pagine e API pubbliche
-		if (path.equals("/login.html") || path.equals("/register-admin.html") || path.equals("/index.html")
-				|| path.equals("/style.css") || path.equals("/main.js") || path.equals("/favicon.ico")
-				|| path.startsWith("/api/auth/login") || path.startsWith("/api/auth/is-empty")) {
+		if (isPublic(request)) {
 			filterChain.doFilter(request, response);
 			return;
 		}
 
-		// 🔑 Header Authorization
 		String authHeader = request.getHeader("Authorization");
 
 		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-			filterChain.doFilter(request, response);
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 			return;
 		}
 
 		String token = authHeader.substring(7);
 
-		// 🔍 Validazione token con nuova API
-		if (jwtService.isTokenValid(token)) {
+		try {
+			if (!jwtService.isTokenValid(token)) {
+				response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+				return;
+			}
+
 			String username = jwtService.extractUsername(token);
 			String role = jwtService.extractRole(token);
 
-			// 🔐 Costruzione Authentication
 			UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(username, null,
 					Collections.singleton(() -> "ROLE_" + role));
 
 			auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
 			SecurityContextHolder.getContext().setAuthentication(auth);
+
+		} catch (ExpiredJwtException e) {
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+			return;
+
+		} catch (MalformedJwtException | SignatureException | IllegalArgumentException e) {
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+			return;
+
+		} catch (Exception e) {
+			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+			return;
 		}
 
 		filterChain.doFilter(request, response);
+	}
+
+	private boolean isPublic(HttpServletRequest request) {
+		String path = request.getServletPath();
+
+		if (path.endsWith(".html") || path.endsWith(".js") || path.endsWith(".css") || path.equals("/favicon.ico")) {
+			return true;
+		}
+
+		return PUBLIC_PATHS.contains(path);
 	}
 }

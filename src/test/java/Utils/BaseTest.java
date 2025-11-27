@@ -49,8 +49,8 @@ public abstract class BaseTest {
 				.body(json).when().post().then().statusCode(200).body(equalTo("Registrazione completata"));
 	}
 
-	protected String loginRecuperaToken() {
-		String loginJson = CreaJson.creaJsonAccesso("admin", "adminpass");
+	protected String loginRecuperaToken(String username, String password) {
+		String loginJson = CreaJson.creaJsonAccesso(username, password);  //"admin", "adminpass"
 
 		return given().baseUri("http://localhost:8080").basePath("/api/auth/login").contentType("application/json")
 				.body(loginJson).when().post().then().statusCode(200).extract().path("token");

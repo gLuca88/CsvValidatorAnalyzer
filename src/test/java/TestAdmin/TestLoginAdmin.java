@@ -77,7 +77,7 @@ public class TestLoginAdmin extends BaseTest {
 		creaAdminViaApi();
 
 		ExtentTestManager.logInfo("Ottengo token con loginRecuperaToken()...");
-		String token = loginRecuperaToken();
+		String token = loginRecuperaToken("admin", "adminpass");
 
 		ExtentTestManager.logInfo("Token ottenuto: " + token);
 
@@ -106,7 +106,7 @@ public class TestLoginAdmin extends BaseTest {
 		creaAdminViaApi();
 
 		ExtentTestManager.logInfo("Recupero token di login...");
-		String token = loginRecuperaToken();
+		String token = loginRecuperaToken("admin", "adminpass");
 
 		ExtentTestManager.logInfo("Invio GET all’endpoint protetto...");
 
@@ -164,7 +164,7 @@ public class TestLoginAdmin extends BaseTest {
 		ExtentTestManager.logInfo("Creo admin via API...");
 		creaAdminViaApi();
 		ExtentTestManager.logInfo("Ottengo token valido...");
-		String tokenValido = loginRecuperaToken();
+		String tokenValido = loginRecuperaToken("admin", "adminpass");
 		ExtentTestManager.logInfo("Token valido: " + tokenValido);
 		ExtentTestManager.logInfo("Genero token MANIPOLATO...");
 		String tokenCorrotto = tokenValido.substring(0, tokenValido.length() - 2) + "xx";
@@ -179,17 +179,20 @@ public class TestLoginAdmin extends BaseTest {
 
 		ExtentTestManager.startTest("LOGIN-015 → Ruolo errato → 403 Forbidden");
 
-		ExtentTestManager.logInfo("Creo admin via API...");
-		creaAdminViaApi();
+		
+
 		ExtentTestManager.logInfo("Creo employee via API...");
 		creaEmployeeViaApi();
+
 		ExtentTestManager.logInfo("Effettuo login come EMPLOYEE...");
-		String tokenEmployee = loginRecuperaToken();
+		String tokenEmployee = loginRecuperaToken("employee1", "emppass");
 		ExtentTestManager.logInfo("Token employee: " + tokenEmployee);
-		ExtentTestManager
-				.logInfo("Invio GET a /api/admin/dbconfig/register con token EMPLOYEE(endpoint che registra db)...");
+
+		ExtentTestManager.logInfo("Invio GET a /api/admin/dbconfig/check-access con token EMPLOYEE...");
+
 		given().baseUri("http://localhost:8080").header("Authorization", "Bearer " + tokenEmployee).when()
-				.get("/api/admin/dbconfig/register").then().statusCode(403);
+				.get("/api/admin/dbconfig/check-access").then().statusCode(403);
+
 		ExtentTestManager.logPass("✔ Ruolo errato → correttamente bloccato con 403 Forbidden");
 	}
 
@@ -202,9 +205,9 @@ public class TestLoginAdmin extends BaseTest {
 		String tokenScaduto = generaTokenScaduto();
 		ExtentTestManager.logInfo("Token scaduto: " + tokenScaduto);
 
-		ExtentTestManager.logInfo("Invio GET a endpoint admin con token scaduto...");
+		ExtentTestManager.logInfo("Invio POST a endpoint admin con token scaduto...");
 		given().baseUri("http://localhost:8080").header("Authorization", "Bearer " + tokenScaduto).when()
-				.get("/api/admin/dbconfig/list").then().statusCode(401);
+				.post("/api/admin/dbconfig/list").then().statusCode(401);
 		ExtentTestManager.logPass("✔ Token scaduto rifiutato correttamente → 401 Unauthorized");
 	}
 
@@ -214,7 +217,7 @@ public class TestLoginAdmin extends BaseTest {
 		ExtentTestManager.logInfo("Creo admin via API...");
 		creaAdminViaApi();
 		ExtentTestManager.logInfo("Ottengo token valido...");
-		String token = loginRecuperaToken();
+		String token = loginRecuperaToken("admin", "adminpass");
 		ExtentTestManager.logInfo("Token valido: " + token);
 		ExtentTestManager.logInfo("Invio richiesta con Authorization malformato (senza Bearer)...");
 		given().baseUri("http://localhost:8080").header("Authorization", token) // niente Bearer

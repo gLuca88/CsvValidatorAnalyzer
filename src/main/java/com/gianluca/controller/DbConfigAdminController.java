@@ -40,4 +40,9 @@ public class DbConfigAdminController {
         return dbConfigService.getAllAliases();
         
     }
+ // Endpoint GET di controllo accesso per i test
+    @GetMapping("/check-access")
+    public ResponseEntity<String> checkAccess() {
+        return ResponseEntity.ok("Accesso consentito (ADMIN)");
+    }
 }
