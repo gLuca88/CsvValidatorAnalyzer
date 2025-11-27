@@ -27,4 +27,16 @@ public class CreaJson {
 				""".formatted(user, password);
 	}
 
+	public static String creaJsonUpdate(String newUser, String newPassword) {
+
+		return """
+				 {
+				            "newUsername": "%s",
+				            "newPassword": "%s"
+				        }
+
+				""".formatted(newUser, newPassword);
+
+	}
+
 }

@@ -15,29 +15,41 @@ import java.util.Optional;
 @Service
 public class AdminProfileServiceImpl implements IAdminProfileService {
 
-    @Autowired
-    private JwtService jwtService;
+	@Autowired
+	private JwtService jwtService;
 
-    @Autowired
-    private UserRepository userRepository;
+	@Autowired
+	private UserRepository userRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+	@Autowired
+	private PasswordEncoder passwordEncoder;
 
-    @Override
-    public ResponseEntity<String> updateProfile(String jwt, UpdateProfileRequest request) {
-        String username = jwtService.extractUsername(jwt);
-        Optional<User> optionalUser = userRepository.findByUsername(username);
+	@Override
+	public ResponseEntity<String> updateProfile(String jwt, UpdateProfileRequest request) {
 
-        if (optionalUser.isEmpty() || !optionalUser.get().isProtectedAdmin()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accesso negato");
-        }
+		// 1️⃣ Validazione campi (per UPD-003)
+		if (request.getNewUsername() == null || request.getNewPassword() == null || request.getNewUsername().isBlank()
+				|| request.getNewPassword().isBlank()) {
 
-        User admin = optionalUser.get();
-        admin.setUsername(request.getNewUsername());
-        admin.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(admin);
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Campi mancanti");
+		}
 
-        return ResponseEntity.ok("UPDATED_AND_LOGOUT");
-    }
+		// 2️⃣ Recupero username da JWT
+		String username = jwtService.extractUsername(jwt);
+		Optional<User> optionalUser = userRepository.findByUsername(username);
+
+		// 3️⃣ Solo admin protetto può modificare se stesso
+		if (optionalUser.isEmpty() || !optionalUser.get().isProtectedAdmin()) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accesso negato");
+		}
+
+		// 4️⃣ Aggiornamento dati
+		User admin = optionalUser.get();
+		admin.setUsername(request.getNewUsername());
+		admin.setPassword(passwordEncoder.encode(request.getNewPassword()));
+		userRepository.save(admin);
+
+		// 5️⃣ Risposta finale
+		return ResponseEntity.ok("UPDATED_AND_LOGOUT");
+	}
 }

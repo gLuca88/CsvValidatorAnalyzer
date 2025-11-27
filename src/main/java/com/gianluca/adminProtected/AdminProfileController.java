@@ -35,6 +35,10 @@ public class AdminProfileController {
 		return profileService.updateProfile(jwt, request);
 	}
 
+	
+	
+	
+	//Mostrare la sezione “Aggiorna Profilo Admin” solo al primo admin
 	@GetMapping("/is-protected-admin")
 	public ResponseEntity<Boolean> isProtectedAdmin(@RequestHeader("Authorization") String token) {
 		String jwt = token.replace("Bearer ", "");
@@ -42,4 +46,5 @@ public class AdminProfileController {
 		Optional<User> user = userRepository.findByUsername(username);
 		return ResponseEntity.ok(user.map(User::isProtectedAdmin).orElse(false));
 	}
+	
 }
