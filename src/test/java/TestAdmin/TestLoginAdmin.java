@@ -24,7 +24,7 @@ import ReportConfig.ReportExtension;
 import Utils.BaseTest;
 import Utils.CreaJson;
 import Utils.JsonUtils;
-
+import static Utils.ApiTestUtils.*;
 @ExtendWith(ReportExtension.class)
 public class TestLoginAdmin extends BaseTest {
 

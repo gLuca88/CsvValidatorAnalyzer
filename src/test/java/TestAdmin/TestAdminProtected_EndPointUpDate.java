@@ -7,6 +7,7 @@ import ReportConfig.ExtentTestManager;
 import ReportConfig.ReportExtension;
 import Utils.BaseTest;
 import Utils.CreaJson;
+import static Utils.ApiTestUtils.*;
 
 import static io.restassured.RestAssured.given;
 
