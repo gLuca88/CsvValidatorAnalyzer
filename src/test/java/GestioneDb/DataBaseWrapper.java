@@ -6,7 +6,7 @@ import java.sql.ResultSet;
 
 public class DataBaseWrapper {
 
-	private final Connection connection;
+	protected final Connection connection;
 
 	public DataBaseWrapper() throws Exception {
 		// Otteniamo la connessione dal manager (singleton)
@@ -26,16 +26,24 @@ public class DataBaseWrapper {
 	 */
 	public boolean verificaCondizione(String tableName, String campo, String valore) throws Exception {
 
-		String queryTemplate = "SELECT COUNT(*) FROM {table} WHERE {campo} = ?";
-		String query = queryTemplate.replace("{table}", tableName).replace("{campo}", campo);
+		String query = "SELECT COUNT(*) FROM " + tableName + " WHERE " + campo + " = ?";
 
-		PreparedStatement ps = connection.prepareStatement(query);
-		ps.setString(1, valore);
+		try (Connection conn = DataBaseManager.getConnection(); PreparedStatement ps = conn.prepareStatement(query)) {
 
-		ResultSet rs = ps.executeQuery();
-		rs.next();
+			ps.setString(1, valore);
 
-		return rs.getInt(1) > 0;
+			ResultSet rs = ps.executeQuery();
+			rs.next();
+
+			int result = rs.getInt(1);
+			conn.commit(); // IMPORTANTE
+
+			return result > 0;
+
+		} catch (Exception e) {
+			DataBaseManager.rollback();
+			throw e;
+		}
 	}
 
 }
